@@ -23,10 +23,9 @@ typedef enum {
     NONE = -1,
 } Direction;
 
-/*
- * wtf is a snake? -> linked list of what
- * and how does it move
-*/
+typedef struct {
+    int x, y;
+} Apple;
 
 typedef struct {
     int x, y;
@@ -93,12 +92,14 @@ void grow_snake( Snake* s )
     s->length++;
 }
 
-void move_snake( Snake* s )
+void move_snake( Snake* s, Apple app, int x, int y )
 {
     _snake* head = s->head;
     // Keep track of previous location
     int prevX = head->x;
     int prevY = head->y;
+    
+    // TODO: Figure out collisions with walls and apple
 
     switch ( head->dir )
     {
@@ -153,41 +154,17 @@ void move_snake( Snake* s )
 
 }
 
-_snake* pop(Snake* s) {
-    if ( s->length == 0 ) return NULL;
-
-    _snake* prev = s->head;
-    _snake* tmp = s->head;
-
-    while ( tmp->next != NULL ) {
-        prev = tmp;
-        tmp = tmp->next;
-    }
-
-    prev->next = NULL;
-    s->tail = prev;
-
-    return tmp;
-}
-
 void free_snake(Snake* s)
 {
-    if ( s->length == 0 ) return;
+    struct _snake* tmp;
 
-    _snake* tmp = pop(s);
-
-    while ( tmp != NULL ) {
-        free(tmp);
-        tmp = pop(s);
+    while (s->head != NULL) {
+        tmp = s->head;
+        s->head = s->head->next;
+        free( tmp );
     }
 
-    // for ( int i = 0; i < s->length; ++i ) {
-    //     _snake* sn = pop(tmp);
-    //     free(sn);
-    // }
-
-    free(tmp);
-    free(s);
+    free( s );
 }
 
 void render_snake( SDL_Renderer* rend, Snake* snake, int x, int y )
@@ -210,7 +187,22 @@ void render_snake( SDL_Renderer* rend, Snake* snake, int x, int y )
 
         s = s->next;
     }
-//
+}
+
+void render_apple( SDL_Renderer* r, Apple app, int x, int y )
+{
+    // RED
+    SDL_SetRenderDrawColor( r, 0xFF, 0x0, 0x0, 255 );
+
+    // Figure out a random spot on the grid;
+    SDL_Rect apple = {
+        .w = CELLSIZE,
+        .h = CELLSIZE,
+        .x = app.x * CELLSIZE + x,
+        .y = app.y * CELLSIZE + y,
+    };
+
+    SDL_RenderFillRect( r, &apple );
 }
 
 void draw_grid( SDL_Renderer* r, int x, int y )
@@ -235,6 +227,10 @@ void draw_grid( SDL_Renderer* r, int x, int y )
     
 }
 
+void check_collisions( Snake* snake, Apple apple, int x, int y )
+{
+
+}
 
 int main() {
 
@@ -250,7 +246,15 @@ int main() {
     int GRIDX = (WINDOW_WIDTH / 2) - (GRIDDIM / 2);
     int GRIDY = (WINDOW_HEIGHT / 2) - (GRIDDIM / 2);
 
+    int sz = GRIDSIZE;
+
     bool running = true;
+
+    Apple app = {
+        .x = rand() % GRIDSIZE,
+        .y = rand() % GRIDSIZE,
+    };
+
     Snake* snake = init_snake();
     grow_snake(snake);
     grow_snake(snake);
@@ -262,7 +266,6 @@ int main() {
     while ( running )
     {
         // Check Input
-
         while ( SDL_PollEvent(&e) ) {
 
             switch ( e.type )
@@ -285,16 +288,16 @@ int main() {
             }
         }
 
-        move_snake( snake );
+        move_snake( snake, app, GRIDX, GRIDY );
+
+        // check_collisions( snake, app, GRIDX, GRIDY );
 
         // Clear Window
         SDL_SetRenderDrawColor( renderer, 0,0,0,255 );
         SDL_RenderClear( renderer );
 
-        // Draw grid
+        render_apple( renderer, app, GRIDX, GRIDY );
         draw_grid( renderer, GRIDX, GRIDY );
-
-        // Draw body
         render_snake( renderer, snake, GRIDX, GRIDY );
 
         SDL_RenderPresent( renderer );
@@ -302,6 +305,10 @@ int main() {
 
     }
 
+    SDL_DestroyWindow( window );
+    SDL_Quit();
+
+    free_snake( snake );
 
     return 0;
 }
