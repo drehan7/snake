@@ -70,38 +70,10 @@ bool checkCollision( SDL_Rect a, SDL_Rect b ) {
     return isColliding;
 }
 
-
-Snake* init_snake()
-{
-    _snake* sb = malloc( sizeof( sb ) );
-
-    if ( sb == NULL ) {
-        //printf("Couldnt make snake\n");
-        exit(1);
-    }
-
-    sb->x = rand() % (GRIDSIZE / 2) + (GRIDSIZE / 4);
-    sb->y = rand() % (GRIDSIZE / 2) + (GRIDSIZE / 4);
-    sb->next = NULL;
-    sb->dir = UP;
-
-    Snake* snake = malloc(sizeof(Snake));
-    if ( snake == NULL ) {
-        //printf("Couldnt make snake :(\n");
-        exit(1);
-    }
-
-    snake->head = sb;
-    snake->tail = sb;
-    snake->length = 1;
-
-    return snake;
-}
-
 // TODO!! make growing smarter
 void grow_snake( Snake* s )
 {
-    _snake* new = malloc(sizeof(s));
+    _snake* new = malloc( sizeof( *s ) );
 
     new->dir = s->tail->dir;
 
@@ -136,6 +108,32 @@ void grow_snake( Snake* s )
     s->tail = new;
 
     s->length++;
+}
+
+Snake* init_snake()
+{
+    _snake* sb = malloc( sizeof( *sb ) );
+
+    if ( sb == NULL ) {
+        exit(1);
+    }
+
+    sb->x = rand() % (GRIDSIZE / 2) + (GRIDSIZE / 4);
+    sb->y = rand() % (GRIDSIZE / 2) + (GRIDSIZE / 4);
+    sb->next = NULL;
+    sb->dir = UP;
+
+    Snake* snake = malloc(sizeof(Snake));
+    if ( snake == NULL ) {
+        exit(1);
+    }
+
+    snake->head = sb;
+    snake->tail = sb;
+    snake->length = 1;
+
+    grow_snake( snake );
+    return snake;
 }
 
 void move_snake( Snake* s)
@@ -252,7 +250,7 @@ void render_snake( SDL_Renderer* rend, Snake* snake, int x, int y )
 
         SDL_RenderFillRect( rend, &nr );
 
-        s = s->next;
+        s = (_snake*) s->next;
     }
 }
 
@@ -349,10 +347,6 @@ int main() {
     };
 
     Snake* snake = init_snake();
-    grow_snake(snake);
-    grow_snake(snake);
-    grow_snake(snake);
-    grow_snake(snake);
 
     int* dir = &snake->head->dir;
 
@@ -393,7 +387,7 @@ int main() {
         render_snake( renderer, snake, GRIDX, GRIDY );
 
         SDL_RenderPresent( renderer );
-        SDL_Delay( 150 );
+        SDL_Delay( 100 );
 
     }
 
