@@ -1,5 +1,7 @@
 #include <SDL2/SDL.h>
 #include <stdbool.h>
+#include <time.h>
+#include <stdlib.h>
 
 #define SNAKESIZE 10
 
@@ -39,21 +41,42 @@ typedef struct {
     int length;
 } Snake;
 
-_snake* create_body( int x, int y, Direction d )
-{
-    _snake* sb = malloc( sizeof(_snake) );
-    sb->x = x;
-    sb->y = y;
-    sb->dir = d;
-    sb->next = NULL;
+bool checkCollision( SDL_Rect a, SDL_Rect b ) {
+
+    // Sides
+    int topA = a.y;
+    int bottomA = a.y + a.h;
+    int leftA = a.x;
+    int rightA = a.x + a.w;
+
+    int topB = b.y;
+    int bottomB = b.y + b.h;
+
+    int leftB = b.x;
+    int rightB = b.x + b.w;
+
+    bool isColliding = true;
+
+    if (
+            rightA <= leftB ||
+            topA <= bottomB ||
+            topB <= bottomA ||
+            rightB <= leftA
+        )
+    {
+        isColliding = false;
+    }
+
+    return isColliding;
 }
+
 
 Snake* init_snake()
 {
     _snake* sb = malloc( sizeof( sb ) );
 
     if ( sb == NULL ) {
-        printf("Couldnt make snake\n");
+        //printf("Couldnt make snake\n");
         exit(1);
     }
 
@@ -64,7 +87,7 @@ Snake* init_snake()
 
     Snake* snake = malloc(sizeof(Snake));
     if ( snake == NULL ) {
-        printf("Couldnt make snake :(\n");
+        //printf("Couldnt make snake :(\n");
         exit(1);
     }
 
@@ -81,18 +104,41 @@ void grow_snake( Snake* s )
     _snake* new = malloc(sizeof(s));
 
     new->dir = s->tail->dir;
-    new->x = s->tail->x;
-    new->y = s->tail->y - 1;
+
+    switch ( new->dir )
+    {
+        case DOWN: {
+            new->x = s->tail->x;
+            new->y = s->tail->y - 1;
+            break;
+        }
+        case UP: {
+            new->x = s->tail->x;
+            new->y = s->tail->y + 1;
+            break;
+        }
+        case LEFT: {
+            new->x = s->tail->x + 1;
+            new->y = s->tail->y;
+            break;
+        }
+        case RIGHT: {
+            new->x = s->tail->x - 1;
+            new->y = s->tail->y;
+            break;
+        }
+        default: break;
+    }
 
     new->next = NULL;
-    s->tail->next = new;
+    s->tail->next = (struct _snake*) new;
 
     s->tail = new;
 
     s->length++;
 }
 
-void move_snake( Snake* s, Apple app, int x, int y )
+void move_snake( Snake* s)
 {
     _snake* head = s->head;
     // Keep track of previous location
@@ -100,7 +146,6 @@ void move_snake( Snake* s, Apple app, int x, int y )
     int prevY = head->y;
     
     // TODO: Figure out collisions with walls and apple
-
     switch ( head->dir )
     {
         case DOWN:
@@ -130,9 +175,32 @@ void move_snake( Snake* s, Apple app, int x, int y )
             }
     }
 
+    // Check Snake hit walls
+    // Appear on opposite side
+    int gridRight = CELLSIZE / 2;
+    int gridLeft = 0;
+    int gridTop = 0;
+    int gridBottom = CELLSIZE / 2;
+
+    int mousex, mousey;
+    SDL_GetMouseState(&mousex, &mousey);
+
+    if ( head->y == gridBottom ) {
+        head->y = gridTop;
+    }
+    else if ( head->y == gridTop - 1 ) {
+        head->y = gridBottom - 1;
+    }
+    else if ( head->x == gridRight ) {
+        head->x = gridLeft;
+    }
+    else if ( head->x == gridLeft - 1 ) {
+        head->x = gridRight - 1;
+    }
+
     _snake* tmp = s->head;
 
-    // Everythign after the head
+    // Everything after the head
     if ( tmp->next != NULL ) {
         tmp = tmp->next;
     }
@@ -144,7 +212,6 @@ void move_snake( Snake* s, Apple app, int x, int y )
 
         tmp->x = prevX;
         tmp->y = prevY;
-
 
         prevX = currX;
         prevY = currY;
@@ -205,6 +272,35 @@ void render_apple( SDL_Renderer* r, Apple app, int x, int y )
     SDL_RenderFillRect( r, &apple );
 }
 
+// Check snake collision with apple
+// Generate new apple
+void detect_apple( SDL_Renderer* r, Snake* s, Apple* app, int x, int y )
+{
+    if ( s == NULL ) return;
+
+    SDL_Rect tmpApple = {
+        .x = app->x,
+        .y = app->y,
+        .w = CELLSIZE / 2,
+        .h = CELLSIZE / 2,
+    };
+
+    _snake* head = s->head;
+    SDL_Rect tmpSnake = {
+        .x = head->x,
+        .y = head->y,
+        .w = CELLSIZE / 2,
+        .h = CELLSIZE / 2 ,
+    };
+
+    if ( SDL_RectEquals(&tmpSnake, &tmpApple) == SDL_TRUE )
+    {
+         app->x = (int) rand() % GRIDSIZE;
+         app->y = (int) rand() % GRIDSIZE;
+         grow_snake( s );
+    }
+}
+
 void draw_grid( SDL_Renderer* r, int x, int y )
 {
     // Grey
@@ -227,12 +323,9 @@ void draw_grid( SDL_Renderer* r, int x, int y )
     
 }
 
-void check_collisions( Snake* snake, Apple apple, int x, int y )
-{
-
-}
-
 int main() {
+
+    srand(time(NULL));
 
     SDL_Init(SDL_INIT_VIDEO);
 
@@ -251,8 +344,8 @@ int main() {
     bool running = true;
 
     Apple app = {
-        .x = rand() % GRIDSIZE,
-        .y = rand() % GRIDSIZE,
+        .x = (int)rand() % GRIDSIZE,
+        .y = (int)rand() % GRIDSIZE,
     };
 
     Snake* snake = init_snake();
@@ -288,9 +381,8 @@ int main() {
             }
         }
 
-        move_snake( snake, app, GRIDX, GRIDY );
-
-        // check_collisions( snake, app, GRIDX, GRIDY );
+        move_snake( snake );
+        detect_apple( renderer, snake, &app, GRIDX, GRIDY );
 
         // Clear Window
         SDL_SetRenderDrawColor( renderer, 0,0,0,255 );
@@ -301,7 +393,7 @@ int main() {
         render_snake( renderer, snake, GRIDX, GRIDY );
 
         SDL_RenderPresent( renderer );
-        SDL_Delay( 205 );
+        SDL_Delay( 150 );
 
     }
 
