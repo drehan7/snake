@@ -14,7 +14,6 @@
 #define GRIDSIZE 20
 #define GRIDDIM 800
 
-
 #define CELLSIZE (GRIDDIM / GRIDSIZE)
 
 typedef enum {
@@ -42,6 +41,7 @@ typedef struct {
 } Snake;
 
 // Prevent illegal moves
+// i.e. going into yourself
 void handleKey( SDL_Event e, Direction* dir ) {
 
     Direction newDir;
@@ -162,11 +162,11 @@ Snake* init_snake()
 void move_snake( Snake* s)
 {
     _snake* head = s->head;
+
     // Keep track of previous location
     int prevX = head->x;
     int prevY = head->y;
     
-    // TODO: Figure out collisions with walls and apple
     switch ( head->dir )
     {
         case DOWN:
@@ -277,7 +277,7 @@ void render_snake( SDL_Renderer* rend, Snake* snake, int x, int y )
     }
 }
 
-void render_apple( SDL_Renderer* r, Apple app, int x, int y )
+void render_apple( SDL_Renderer* r, Snake* s, Apple app, int x, int y )
 {
     // RED
     SDL_SetRenderDrawColor( r, 0xFF, 0x0, 0x0, 255 );
@@ -289,6 +289,34 @@ void render_apple( SDL_Renderer* r, Apple app, int x, int y )
         .x = app.x * CELLSIZE + x,
         .y = app.y * CELLSIZE + y,
     };
+
+    bool appleIsIntersecting = false;
+
+    // check apple does not collide with snake
+    _snake* tmp = (_snake*) s->head;
+    while ( tmp != NULL ) {
+
+        SDL_Rect tmpSnakeRect = {
+            .x = tmp->x,
+            .y = tmp->y,
+            .w = CELLSIZE / 2,
+            .h = CELLSIZE / 2,
+        };
+
+
+        // Apple landed inside the snake; regen
+        if ( SDL_RectEquals(&tmpSnakeRect, &apple) ) {
+            appleIsIntersecting = true;
+            break;
+        }
+
+        tmp = ( _snake* ) tmp->next;
+    }
+
+    // How likely is this to go forever...
+    if ( appleIsIntersecting ) {
+        return render_apple( r, s, app, x, y );
+    }
 
     SDL_RenderFillRect( r, &apple );
 }
@@ -306,14 +334,7 @@ void detect_snake( Snake* snake, bool* running  ) {
         .w = CELLSIZE / 2,
         .h = CELLSIZE / 2,
     };
-        /* SDL_Rect tmpRect = { */
-        /*      .x = tmp->x, */
-        /*      .y = tmp->y, */
-        /*      .w = CELLSIZE / 2, */
-        /*      .h = CELLSIZE / 2, */
-        /* }; */
 
-    // Check if theres a loop?
     while ( tmp != NULL ) {
 
         SDL_Rect tmpRect = {
@@ -323,9 +344,10 @@ void detect_snake( Snake* snake, bool* running  ) {
             .h = CELLSIZE / 2,
         };
 
+        // Game Over
         if ( SDL_RectEquals(&headRect, &tmpRect) ) {
             *running = false;
-            SDL_Delay(1000);
+            SDL_Delay(1000); // TODO: show 'you died' screen
             break;
         }
 
@@ -444,7 +466,7 @@ int main() {
         SDL_SetRenderDrawColor( renderer, 0,0,0,255 );
         SDL_RenderClear( renderer );
 
-        render_apple( renderer, app, GRIDX, GRIDY );
+        render_apple( renderer, snake, app, GRIDX, GRIDY );
         draw_grid( renderer, GRIDX, GRIDY );
         render_snake( renderer, snake, GRIDX, GRIDY );
 
