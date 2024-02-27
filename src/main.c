@@ -42,11 +42,9 @@ typedef struct {
 } Snake;
 
 // Prevent illegal moves
-void handleKey( Snake* s, SDL_Event e, Direction* dir ) {
+void handleKey( SDL_Event e, Direction* dir ) {
 
     Direction newDir;
-
-    //Direction currDir = s->head->dir;
 
     switch ( e.key.keysym.sym ) {
         case SDLK_DOWN:   { newDir = DOWN; break; }
@@ -57,10 +55,10 @@ void handleKey( Snake* s, SDL_Event e, Direction* dir ) {
     }
 
     switch ( newDir ) {
-        case SDLK_DOWN: {if ( *dir == SDLK_UP )    {newDir = *dir;} break;}
-        case SDLK_UP:   {if ( *dir == SDLK_DOWN )  {newDir = *dir;} break;}
-        case SDLK_LEFT: {if ( *dir == SDLK_RIGHT ) {newDir = *dir;} break;}
-        case SDLK_RIGHT:{if ( *dir == SDLK_LEFT )  {newDir = *dir;} break;}
+        case DOWN: {if ( *dir == UP )    {newDir = *dir;} break;}
+        case UP:   {if ( *dir == DOWN )  {newDir = *dir;} break;}
+        case LEFT: {if ( *dir == RIGHT ) {newDir = *dir;} break;}
+        case RIGHT:{if ( *dir == LEFT )  {newDir = *dir;} break;}
     }
 
     *dir = newDir;
@@ -430,7 +428,7 @@ int main() {
                 };
                 case SDL_KEYDOWN:
                 {
-                    handleKey( snake, e, dir );
+                    handleKey( e, dir );
                 };
                 default:
                     break;
