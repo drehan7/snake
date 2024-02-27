@@ -41,6 +41,31 @@ typedef struct {
     int length;
 } Snake;
 
+// Prevent illegal moves
+void handleKey( Snake* s, SDL_Event e, Direction* dir ) {
+
+    Direction newDir;
+
+    //Direction currDir = s->head->dir;
+
+    switch ( e.key.keysym.sym ) {
+        case SDLK_DOWN:   { newDir = DOWN; break; }
+        case SDLK_UP:     { newDir = UP; break; }
+        case SDLK_LEFT:   { newDir = LEFT; break; }
+        case SDLK_RIGHT:  { newDir = RIGHT; break; }
+        case SDLK_SPACE:  { newDir = NONE; break; }
+    }
+
+    switch ( newDir ) {
+        case SDLK_DOWN: {if ( *dir == SDLK_UP )    {newDir = *dir;} break;}
+        case SDLK_UP:   {if ( *dir == SDLK_DOWN )  {newDir = *dir;} break;}
+        case SDLK_LEFT: {if ( *dir == SDLK_RIGHT ) {newDir = *dir;} break;}
+        case SDLK_RIGHT:{if ( *dir == SDLK_LEFT )  {newDir = *dir;} break;}
+    }
+
+    *dir = newDir;
+}
+
 bool checkCollision( SDL_Rect a, SDL_Rect b ) {
 
     // Sides
@@ -270,6 +295,47 @@ void render_apple( SDL_Renderer* r, Apple app, int x, int y )
     SDL_RenderFillRect( r, &apple );
 }
 
+// Check linkedlist to see if the head
+// collides with any body part
+void detect_snake( Snake* snake, bool* running  ) {
+    if ( !snake->length ) return;
+    _snake* head = (_snake*) snake->head;
+    _snake* tmp  = (_snake*) head->next;
+
+    SDL_Rect headRect = {
+        .x = head->x,
+        .y = head->y,
+        .w = CELLSIZE / 2,
+        .h = CELLSIZE / 2,
+    };
+        /* SDL_Rect tmpRect = { */
+        /*      .x = tmp->x, */
+        /*      .y = tmp->y, */
+        /*      .w = CELLSIZE / 2, */
+        /*      .h = CELLSIZE / 2, */
+        /* }; */
+
+    // Check if theres a loop?
+    while ( tmp != NULL ) {
+
+        SDL_Rect tmpRect = {
+            .x = tmp->x,
+            .y = tmp->y,
+            .w = CELLSIZE / 2,
+            .h = CELLSIZE / 2,
+        };
+
+        if ( SDL_RectEquals(&headRect, &tmpRect) ) {
+            *running = false;
+            SDL_Delay(1000);
+            break;
+        }
+
+        tmp = (_snake*) tmp->next;
+    }
+
+}
+
 // Check snake collision with apple
 // Generate new apple
 void detect_apple( SDL_Renderer* r, Snake* s, Apple* app, int x, int y )
@@ -364,11 +430,7 @@ int main() {
                 };
                 case SDL_KEYDOWN:
                 {
-                    if ( e.key.keysym.sym == SDLK_DOWN )  { *dir = DOWN; }
-                    if ( e.key.keysym.sym == SDLK_UP )    { *dir = UP; }
-                    if ( e.key.keysym.sym == SDLK_LEFT )  { *dir = LEFT; }
-                    if ( e.key.keysym.sym == SDLK_RIGHT ) { *dir = RIGHT; }
-                    if ( e.key.keysym.sym == SDLK_SPACE ) { *dir = NONE; }
+                    handleKey( snake, e, dir );
                 };
                 default:
                     break;
@@ -377,6 +439,8 @@ int main() {
 
         move_snake( snake );
         detect_apple( renderer, snake, &app, GRIDX, GRIDY );
+
+        detect_snake( snake, &running ); // Check snake eats itself
 
         // Clear Window
         SDL_SetRenderDrawColor( renderer, 0,0,0,255 );
