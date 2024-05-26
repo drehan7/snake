@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_rect.h>
 #include <stdbool.h>
 #include <time.h>
 #include <stdlib.h>
@@ -282,43 +283,44 @@ void render_apple( SDL_Renderer* r, Snake* s, Apple app, int x, int y )
     // RED
     SDL_SetRenderDrawColor( r, 0xFF, 0x0, 0x0, 255 );
 
-    // Figure out a random spot on the grid;
-    SDL_Rect apple = {
-        .w = CELLSIZE,
-        .h = CELLSIZE,
-        .x = app.x * CELLSIZE + x,
-        .y = app.y * CELLSIZE + y,
+    int newX = app.x;
+    int newY = app.y;
+
+    SDL_Rect appRect = {
+        .w = CELLSIZE / 2,
+        .h = CELLSIZE / 2,
+        .x = newX * CELLSIZE + x,
+        .y = newY * CELLSIZE + y,
     };
 
-    bool appleIsIntersecting = false;
-
-    // check apple does not collide with snake
     _snake* tmp = (_snake*) s->head;
     while ( tmp != NULL ) {
 
-        SDL_Rect tmpSnakeRect = {
-            .x = tmp->x,
-            .y = tmp->y,
-            .w = CELLSIZE / 2,
-            .h = CELLSIZE / 2,
-        };
+        SDL_Rect tmpRect = {.x = tmp->x, .y = tmp->y, .w = CELLSIZE/2, .h = CELLSIZE/2};
 
+        SDL_Rect* aptr = &appRect;
 
         // Apple landed inside the snake; regen
-        if ( SDL_RectEquals(&tmpSnakeRect, &apple) ) {
-            appleIsIntersecting = true;
-            break;
+        while ( SDL_RectEquals(&tmpRect, aptr) ) {
+            aptr->x = (int) rand() % GRIDSIZE * CELLSIZE + x;
+            aptr->y = (int) rand() % GRIDSIZE * CELLSIZE + y;
         }
 
         tmp = ( _snake* ) tmp->next;
     }
 
-    // How likely is this to go forever...
-    if ( appleIsIntersecting ) {
-        return render_apple( r, s, app, x, y );
-    }
+    // Figure  ut a random spot on the grid;
+    SDL_Rect apple = {
+        .w = CELLSIZE,
+        .h = CELLSIZE,
+        .x = appRect.x,
+        .y = appRect.y,
+        /* .x = newX * CELLSIZE + x, */
+        /* .y = newY * CELLSIZE + y, */
+    };
 
     SDL_RenderFillRect( r, &apple );
+
 }
 
 // Check linkedlist to see if the head
@@ -433,6 +435,7 @@ int main() {
     };
 
     Snake* snake = init_snake();
+    for ( int i = 0; i < 7; ++i ) grow_snake( snake );
 
     int* dir = &snake->head->dir;
 
